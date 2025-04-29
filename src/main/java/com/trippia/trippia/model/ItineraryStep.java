@@ -1,9 +1,7 @@
 package com.trippia.trippia.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -17,7 +15,10 @@ public class ItineraryStep {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "itinerary_id", nullable = false)
     private Itinerary itinerary;
 
     @Column(nullable = false)
@@ -36,7 +37,5 @@ public class ItineraryStep {
     private String distance;
 
     @Column(nullable = false)
-    private LocalDateTime time;
-
-
+    private String time;
 }
