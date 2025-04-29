@@ -1,14 +1,14 @@
-package com.trippia.trippia.dto;
+package com.trippia.trippia.dto.Login;
 
 import lombok.Data;
 
 @Data
-public class LoginResponseDTO {
+public class LoginResponse {
     private String token;
     private String name;
     private String email;
 
-    public LoginResponseDTO(String token, String name, String email) {
+    public LoginResponse(String token, String name, String email) {
         this.token = token;
         this.name = name;
         this.email = email;

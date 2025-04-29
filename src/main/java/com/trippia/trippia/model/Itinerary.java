@@ -30,10 +30,8 @@ public class Itinerary {
     @Max(30)
     private Integer daysQuantity;
 
-    @Column(nullable = false)
-    @Min(0)
-    @Max(5)
-    private Double averageRating = 0.0;
+    @Column(nullable = true)
+    private Double averageRating;
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.trippia.trippia.model.City;
 import com.trippia.trippia.repository.CityRepository;
+
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -18,5 +20,9 @@ public class CityService {
 
     public City addCity(City city) {
         return cityRepository.save(city);
+    }
+
+    public List<City> getCitiesByItineraryCount(){
+        return cityRepository.findAllOrderByItineraryCountDesc();
     }
 }
