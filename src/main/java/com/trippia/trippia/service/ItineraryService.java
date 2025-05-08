@@ -4,6 +4,7 @@ import com.trippia.trippia.dto.Itinerary.CreateItineraryRequest;
 import com.trippia.trippia.dto.Itinerary.ItineraryResponse;
 import com.trippia.trippia.dto.Itinerary.Step.CreateStepRequest;
 import com.trippia.trippia.dto.Itinerary.UpdateItineraryRequest;
+import com.trippia.trippia.exception.InvalidRequestException;
 import com.trippia.trippia.exception.ResourceNotFoundException;
 import com.trippia.trippia.exception.UnauthorizedException;
 import com.trippia.trippia.model.City;
@@ -16,14 +17,17 @@ import io.micrometer.common.util.StringUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.service.spi.ServiceException;
 import org.springframework.stereotype.Service;
 import com.trippia.trippia.model.Itinerary;
 import com.trippia.trippia.repository.ItineraryRepository;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,11 +47,25 @@ public class ItineraryService {
      * @throws ResourceNotFoundException if city doesn't exist
      */
     public List<ItineraryResponse> findItinerariesByCity(Long cityId) {
-        validateCity(cityId);
         log.debug("Fetching itineraries for city: {}", cityId);
-        return repository.findByCityId(cityId).stream()
-                .map(itineraryMapper::toResponse)
-                .collect(Collectors.toList());
+
+        try {
+            validateCity(cityId);
+
+            List<Itinerary> itineraries = repository.findByCityId(cityId);
+            log.info("Found {} itineraries for city {}", itineraries.size(), cityId);
+
+            return itineraries.stream()
+                    .map(itineraryMapper::toResponse)
+                    .collect(Collectors.toList());
+
+        } catch (ResourceNotFoundException e) {
+            log.warn("City not found: {}", cityId);
+            throw e;
+        } catch (Exception e) {
+            log.error("Error fetching itineraries for city {}: {}", cityId, e.getMessage(), e);
+            throw new ServiceException("Failed to fetch itineraries", e);
+        }
     }
 
     /**
@@ -58,9 +76,19 @@ public class ItineraryService {
      */
     public List<ItineraryResponse> findItinerariesByUser(Long userId) {
         log.debug("Fetching itineraries for user: {}", userId);
-        return repository.findByUserId(userId).stream()
-                .map(itineraryMapper::toResponse)
-                .collect(Collectors.toList());
+
+        try {
+            List<Itinerary> itineraries = repository.findByUserId(userId);
+            log.info("Found {} itineraries for user {}", itineraries.size(), userId);
+
+            return itineraries.stream()
+                    .map(itineraryMapper::toResponse)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Error fetching itineraries for user {}: {}", userId, e.getMessage(), e);
+            throw new ServiceException("Failed to fetch user itineraries", e);
+        }
     }
 
     /**
@@ -70,19 +98,29 @@ public class ItineraryService {
      */
     @Transactional
     public ItineraryResponse createItinerary(CreateItineraryRequest request) {
-        log.info("Creating new itinerary");
-        validateCreateRequest(request);
+        log.debug("Creating new itinerary: {}", request.getTitle());
 
-        User currentUser = securityUtils.getCurrentUser();
-        City city = findCity(request.getCityId());
+        try {
+            validateCreateRequest(request);
 
-        Itinerary itinerary = buildItinerary(request, currentUser, city);
-        itinerary = repository.save(itinerary);
+            User currentUser = securityUtils.getCurrentUser();
+            City city = findCity(request.getCityId());
 
-        processSteps(request.getSteps(), itinerary);
+            Itinerary itinerary = buildItinerary(request, currentUser, city);
+            itinerary = repository.save(itinerary);
 
-        log.info("Successfully created itinerary with ID: {}", itinerary.getId());
-        return itineraryMapper.toResponse(itinerary);
+            processSteps(request.getSteps(), itinerary);
+
+            log.info("Successfully created itinerary with ID: {}", itinerary.getId());
+            return itineraryMapper.toResponse(itinerary);
+
+        } catch (InvalidRequestException | ResourceNotFoundException | UnauthorizedException e) {
+            log.warn("Validation failed during itinerary creation: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error creating itinerary: {}", e.getMessage(), e);
+            throw new ServiceException("Failed to create itinerary", e);
+        }
     }
 
     /**
@@ -92,16 +130,26 @@ public class ItineraryService {
      */
     @Transactional
     public ItineraryResponse updateItinerary(UpdateItineraryRequest request) {
-        log.info("Updating itinerary with ID: {}", request.getId());
-        validateUpdateRequest(request);
+        log.debug("Updating itinerary with ID: {}", request.getId());
 
-        Itinerary itinerary = findAndValidateItinerary(request.getId());
-        updateItineraryFields(itinerary, request);
+        try {
+            validateUpdateRequest(request);
 
-        processUpdatedSteps(request, itinerary);
+            Itinerary itinerary = findAndValidateItinerary(request.getId());
+            updateItineraryFields(itinerary, request);
 
-        log.info("Successfully updated itinerary with ID: {}", itinerary.getId());
-        return itineraryMapper.toResponse(itinerary);
+            processUpdatedSteps(request, itinerary);
+
+            log.info("Successfully updated itinerary with ID: {}", itinerary.getId());
+            return itineraryMapper.toResponse(itinerary);
+
+        } catch (InvalidRequestException | ResourceNotFoundException | UnauthorizedException e) {
+            log.warn("Validation failed during itinerary update: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error updating itinerary {}: {}", request.getId(), e.getMessage(), e);
+            throw new ServiceException("Failed to update itinerary", e);
+        }
     }
 
     /**
@@ -110,26 +158,82 @@ public class ItineraryService {
      */
     @Transactional
     public void deleteItinerary(Long itineraryId) {
-        log.info("Deleting itinerary with ID: {}", itineraryId);
+        log.debug("Deleting itinerary with ID: {}", itineraryId);
 
-        Itinerary itinerary = findAndValidateItinerary(itineraryId);
-        repository.delete(itinerary);
+        try {
+            Itinerary itinerary = findAndValidateItinerary(itineraryId);
+            repository.delete(itinerary);
 
-        log.info("Successfully deleted itinerary with ID: {}", itineraryId);
+            log.info("Successfully deleted itinerary with ID: {}", itineraryId);
+
+        } catch (ResourceNotFoundException | UnauthorizedException e) {
+            log.warn("Validation failed during itinerary deletion: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Error deleting itinerary {}: {}", itineraryId, e.getMessage(), e);
+            throw new ServiceException("Failed to delete itinerary", e);
+        }
     }
 
     private void validateCreateRequest(CreateItineraryRequest request) {
+        log.debug("Validating create itinerary request");
+
         if (request == null) {
-            throw new IllegalArgumentException("Request cannot be null");
+            throw new InvalidRequestException("Request cannot be null");
         }
+
         if (StringUtils.isBlank(request.getTitle())) {
-            throw new IllegalArgumentException("Title is required");
+            throw new InvalidRequestException("Title is required");
         }
+
+        if (StringUtils.isBlank(request.getDescription())) {
+            throw new InvalidRequestException("Description is required");
+        }
+
+        if (request.getDaysQuantity() == null || request.getDaysQuantity() < 1) {
+            throw new InvalidRequestException("Days quantity must be greater than zero");
+        }
+
+        if (request.getCityId() == null) {
+            throw new InvalidRequestException("City ID is required");
+        }
+
+        validateStepsRequest(request.getSteps());
     }
 
     private void validateUpdateRequest(UpdateItineraryRequest request) {
+        log.debug("Validating update itinerary request");
+
         if (request == null || request.getId() == null) {
-            throw new IllegalArgumentException("Request and ID cannot be null");
+            throw new InvalidRequestException("Request and ID cannot be null");
+        }
+
+        if (request.getTitle() != null && StringUtils.isBlank(request.getTitle())) {
+            throw new InvalidRequestException("Title cannot be blank");
+        }
+
+        if (request.getDaysQuantity() != null && request.getDaysQuantity() < 1) {
+            throw new InvalidRequestException("Days quantity must be greater than zero");
+        }
+
+        if (!CollectionUtils.isEmpty(request.getNewSteps())) {
+            validateStepsRequest(request.getNewSteps());
+        }
+    }
+
+    private void validateStepsRequest(List<CreateStepRequest> steps) {
+        if (CollectionUtils.isEmpty(steps)) {
+            throw new InvalidRequestException("At least one step is required");
+        }
+
+        Set<Integer> orders = new HashSet<>();
+        for (CreateStepRequest step : steps) {
+            if (step.getStepOrder() == null || step.getStepOrder() < 1) {
+                throw new InvalidRequestException("Step order must be greater than zero");
+            }
+            if (!orders.add(step.getStepOrder())) {
+                throw new InvalidRequestException("Duplicate step order: " + step.getStepOrder());
+            }
         }
     }
 

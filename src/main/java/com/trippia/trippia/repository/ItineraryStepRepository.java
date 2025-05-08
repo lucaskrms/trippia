@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface ItineraryStepRepository extends JpaRepository<ItineraryStep, Long> {
     List<ItineraryStep> findByItineraryIdOrderByStepOrder(Long itineraryId);
+    boolean existsByStepOrderAndItineraryId(Integer stepOrder, Long itineraryId);
 }

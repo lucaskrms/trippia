@@ -7,6 +7,7 @@ import lombok.*;
 @Entity
 @Table(name = "itinerary_steps")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItineraryStep {
