@@ -1,5 +1,7 @@
 package com.trippia.trippia.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +30,7 @@ public class City {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "city", fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Itinerary> itineraries = new ArrayList<>();
 
     public City(Long id, String name, String state, String country) {

@@ -1,9 +1,8 @@
 package com.trippia.trippia.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "itinerary_steps")
@@ -19,6 +18,7 @@ public class ItineraryStep {
     @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "itinerary_id", nullable = false)
+    @JsonIgnore
     private Itinerary itinerary;
 
     @Column(nullable = false)

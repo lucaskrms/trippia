@@ -1,12 +1,13 @@
 package com.trippia.trippia.controller;
 
+import com.trippia.trippia.dto.Itinerary.CreateItineraryRequest;
+import com.trippia.trippia.dto.Itinerary.UpdateItineraryRequest;
 import com.trippia.trippia.model.Itinerary;
 import com.trippia.trippia.service.ItineraryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,4 +29,18 @@ public class ItineraryController {
         List<Itinerary> itineraries = itineraryService.findItinerariesByUser(userId);
         return ResponseEntity.ok(itineraries);
     }
+
+    @PostMapping("/create")
+    @PreAuthorize("isAuthenticated()")
+    public Itinerary createItinerary(@RequestBody CreateItineraryRequest request) {
+        return itineraryService.createItinerary(request);
+    }
+
+    @PostMapping("/update")
+    @PreAuthorize("isAuthenticated()")
+    public Itinerary updateItinerary(@RequestBody UpdateItineraryRequest request) {
+        return itineraryService.updateItinerary(request);
+    }
+
+
 }
