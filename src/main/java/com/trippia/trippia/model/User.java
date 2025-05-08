@@ -37,11 +37,13 @@ public class User {
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     @JsonIgnore
+    @Builder.Default
     private List<Itinerary> itineraries = new ArrayList<>();
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    @Builder.Default
     private List<ItineraryRating> ratings = new ArrayList<>();
 
     public User(String name, String email, String password) {

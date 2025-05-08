@@ -12,6 +12,7 @@ import java.util.List;
 @Entity
 @Table(name = "itineraries")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Itinerary {
@@ -34,6 +35,7 @@ public class Itinerary {
     private Double averageRating;
 
     @Column(nullable = false)
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ToString.Exclude
@@ -51,10 +53,12 @@ public class Itinerary {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ItineraryStep> steps = new ArrayList<>();
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<ItineraryRating> ratings = new ArrayList<>();
 }
