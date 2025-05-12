@@ -12,7 +12,6 @@ Trippia is a RESTful API designed to help users plan their trips by creating cus
 
 - User registration and authentication
 - Create and manage custom trip itineraries
-- Add and edit cities within itineraries
 - Organize steps (activities) for each itinerary
 - Modular structure for easy expansion
 
